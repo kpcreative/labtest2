@@ -1,0 +1,86 @@
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_diabetes
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+diabetes = load_diabetes()
+X = diabetes.data
+y = diabetes.target
+feature_names = diabetes.feature_names
+df = pd.DataFrame(X, columns=feature_names)
+df['target'] = y
+
+y_binary=(y>np.median(y)).astype(int)
+
+print(f"Number of features: {len(feature_names)}")
+sns.pairplot(df, diag_kind='kde', plot_kws={'alpha':0.6})
+plt.suptitle("Pairplot of Diabetes Dataset", y=1.02)
+plt.show()
+
+
+imputer = SimpleImputer(strategy='mean')
+X = imputer.fit_transform(X)
+
+# 3rd question hai 
+splits = [(0.4, 0.6), (0.2, 0.8)]
+results = {}
+
+for test_size, train_size in splits:
+    X_train, X_test, y_train, y_test = train_test_split(X, y_binary, test_size=test_size, random_state=42) 
+
+    # KNN Classify kiye hai ham
+    knn = KNeighborsClassifier()
+    knn.fit(X_train, y_train)
+    y_pred_knn = knn.predict(X_test)
+
+
+    nb = GaussianNB()
+    nb.fit(X_train, y_train)
+    y_pred_nb = nb.predict(X_test)
+
+    
+    results[f'KNN_{train_size*100:.0f}_{test_size*100:.0f}'] = {
+        'accuracy': accuracy_score(y_test, y_pred_knn),
+        'precision': precision_score(y_test, y_pred_knn, average='macro'),
+        'recall': recall_score(y_test, y_pred_knn, average='macro'),
+        'f1': f1_score(y_test, y_pred_knn, average='macro')
+    }
+    
+    results[f'NB_{train_size*100:.0f}_{test_size*100:.0f}'] = {
+        'accuracy': accuracy_score(y_test, y_pred_nb),
+        'precision': precision_score(y_test, y_pred_nb, average='macro'),
+        'recall': recall_score(y_test, y_pred_nb, average='macro'),
+        'f1': f1_score(y_test, y_pred_nb, average='macro')
+    }
+
+
+plt.figure(figsize=(10, 6))
+for feature in feature_names:
+    plt.scatter(df[feature], df['target'], alpha=0.5, label=feature)
+plt.xlabel("Feature Value")
+plt.ylabel("Blood Sugar")
+plt.legend(loc='upper right')
+plt.title("Scatter Plot of Features with Blood Sugar")
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.plot(df['target'], label='Blood Sugar')
+plt.xlabel("Sample Index")
+plt.ylabel("Blood Sugar")
+plt.title("Basic Plot of Blood Sugar Level")
+plt.legend()
+plt.show()
+
+
+print("\nPerformance Metrics Comparison:\n")
+for model, metrics in results.items():
+    print(f"Model: {model}")
+    for metric, value in metrics.items():
+        print(f"  {metric.capitalize()}: {value:.4f}")
+    print("\n")
